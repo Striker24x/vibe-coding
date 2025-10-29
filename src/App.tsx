@@ -3,7 +3,6 @@ import { Server, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
 import { useStore } from './store/useStore';
 import { useDataSync } from './hooks/useDataSync';
 import { useSelfHealing } from './hooks/useSelfHealing';
-import { supabase } from './lib/supabase';
 import { Header } from './components/Header';
 import { Toast } from './components/Toast';
 import { ServiceCard } from './components/ServiceCard';
@@ -52,16 +51,7 @@ function App() {
       uptime: action === 'stop' ? 0 : service.uptime,
     };
 
-    await supabase.from('services').update(updates).eq('id', serviceId);
     updateService(serviceId, updates);
-
-    await supabase.from('service_logs').insert({
-      id: `log-${Date.now()}`,
-      service_id: serviceId,
-      level: 'INFO',
-      message: `Service ${action} initiated by user`,
-      timestamp: new Date().toISOString(),
-    });
 
     addAlert({
       type: 'success',
@@ -72,11 +62,6 @@ function App() {
 
   const handleConfigSave = async (newConfig: Partial<typeof config>) => {
     try {
-      await supabase
-        .from('dashboard_config')
-        .update({ ...newConfig, updated_at: new Date().toISOString() })
-        .eq('id', '00000000-0000-0000-0000-000000000001');
-
       setConfig({ ...config, ...newConfig } as typeof config);
 
       addAlert({
@@ -109,11 +94,6 @@ function App() {
 
   const handleWebhookUpdate = async (serviceId: string, webhookUrl: string, enabled: boolean) => {
     try {
-      await supabase
-        .from('services')
-        .update({ webhook_url: webhookUrl, webhook_enabled: enabled })
-        .eq('id', serviceId);
-
       updateService(serviceId, { webhook_url: webhookUrl, webhook_enabled: enabled });
 
       addAlert({

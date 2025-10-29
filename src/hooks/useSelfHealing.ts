@@ -1,10 +1,9 @@
 import { useCallback } from 'react';
-import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { Service, WorkflowHistory } from '../types';
 
 export function useSelfHealing() {
-  const { config, addWorkflowHistory, updateWorkflowHistory, addAlert, updateService } = useStore();
+  const { config, addWorkflowHistory, updateWorkflowHistory, addAlert, updateService, addLog } = useStore();
 
   const triggerSelfHeal = useCallback(
     async (serviceData: Service) => {
@@ -36,7 +35,6 @@ export function useSelfHealing() {
           completed_at: null,
         };
 
-        await supabase.from('workflow_history').insert(workflow);
         addWorkflowHistory(workflow);
 
         addAlert({
@@ -72,16 +70,6 @@ export function useSelfHealing() {
           commands.push(`Restart-Service -Name "${serviceData.name}" -Force`);
           commands.push(`Start-Service -Name "${serviceData.name}"`);
 
-          await supabase
-            .from('services')
-            .update({
-              status: 'Running',
-              last_restart: new Date().toISOString(),
-              error_count: 0,
-              uptime: 0,
-            })
-            .eq('id', serviceData.id);
-
           updateService(serviceData.id, {
             status: 'Running',
             last_restart: new Date().toISOString(),
@@ -92,34 +80,16 @@ export function useSelfHealing() {
 
         if (serviceData.cpu_usage > 80) {
           commands.push(`Get-Process | Where-Object {$_.Name -like "*${serviceData.name}*"} | Set-ProcessPriority -Priority Normal`);
-
-          await supabase
-            .from('services')
-            .update({ cpu_usage: 30 + Math.random() * 20 })
-            .eq('id', serviceData.id);
-
           updateService(serviceData.id, { cpu_usage: 30 + Math.random() * 20 });
         }
 
         if (serviceData.memory_usage > 1000) {
           commands.push(`Restart-Service -Name "${serviceData.name}" -Force`);
-
-          await supabase
-            .from('services')
-            .update({ memory_usage: 200 + Math.random() * 300 })
-            .eq('id', serviceData.id);
-
           updateService(serviceData.id, { memory_usage: 200 + Math.random() * 300 });
         }
 
         if (serviceData.error_count > 5) {
           commands.push(`Clear-EventLog -LogName Application -Source "${serviceData.name}"`);
-
-          await supabase
-            .from('services')
-            .update({ error_count: 0 })
-            .eq('id', serviceData.id);
-
           updateService(serviceData.id, { error_count: 0 });
         }
 
@@ -129,11 +99,6 @@ export function useSelfHealing() {
           completed_at: new Date().toISOString(),
         };
 
-        await supabase
-          .from('workflow_history')
-          .update(completedWorkflow)
-          .eq('id', workflow.id);
-
         updateWorkflowHistory(workflow.id, completedWorkflow);
 
         addAlert({
@@ -142,7 +107,7 @@ export function useSelfHealing() {
           message: `${serviceData.display_name} has been restored to healthy state`,
         });
 
-        await supabase.from('service_logs').insert({
+        addLog({
           id: `log-${Date.now()}`,
           service_id: serviceData.id,
           level: 'INFO',
@@ -159,7 +124,7 @@ export function useSelfHealing() {
         });
       }
     },
-    [config, addWorkflowHistory, updateWorkflowHistory, addAlert, updateService]
+    [config, addWorkflowHistory, updateWorkflowHistory, addAlert, updateService, addLog]
   );
 
   return { triggerSelfHeal };
