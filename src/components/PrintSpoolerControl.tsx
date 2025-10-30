@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Printer, Settings, Save, Loader2, Play, Square } from 'lucide-react';
 import { Service } from '../types';
 import { WebhookDiagnostics } from './WebhookDiagnostics';
+import { webhookSupabase } from '../lib/webhookSupabase';
 
 interface PrintSpoolerControlProps {
   service: Service;
@@ -32,6 +33,42 @@ export function PrintSpoolerControl({
   const [stopWebhookUrl, setStopWebhookUrl] = useState(service.stop_webhook_url || '');
   const [stopWebhookEnabled, setStopWebhookEnabled] = useState(service.stop_webhook_enabled || false);
 
+  useEffect(() => {
+    loadWebhookConfig();
+  }, [service.id]);
+
+  const loadWebhookConfig = async () => {
+    try {
+      const { data, error } = await webhookSupabase
+        .from('spooler_webhook_config')
+        .select('*')
+        .eq('service_id', service.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading webhook config:', error);
+        return;
+      }
+
+      if (data) {
+        setStartWebhookUrl(data.start_webhook_url || '');
+        setStartWebhookEnabled(data.start_webhook_enabled || false);
+        setStopWebhookUrl(data.stop_webhook_url || '');
+        setStopWebhookEnabled(data.stop_webhook_enabled || false);
+
+        await onWebhookUpdate(
+          service.id,
+          data.start_webhook_url || '',
+          data.start_webhook_enabled || false,
+          data.stop_webhook_url || '',
+          data.stop_webhook_enabled || false
+        );
+      }
+    } catch (error) {
+      console.error('Error loading webhook config:', error);
+    }
+  };
+
   const handleTriggerStart = async () => {
     setIsTriggeringStart(true);
     try {
@@ -51,8 +88,38 @@ export function PrintSpoolerControl({
   };
 
   const handleSaveConfig = async () => {
-    await onWebhookUpdate(service.id, startWebhookUrl, startWebhookEnabled, stopWebhookUrl, stopWebhookEnabled);
-    setIsConfigOpen(false);
+    try {
+      const { data: existingConfig } = await webhookSupabase
+        .from('spooler_webhook_config')
+        .select('*')
+        .eq('service_id', service.id)
+        .maybeSingle();
+
+      const configData = {
+        service_id: service.id,
+        start_webhook_url: startWebhookUrl,
+        start_webhook_enabled: startWebhookEnabled,
+        stop_webhook_url: stopWebhookUrl,
+        stop_webhook_enabled: stopWebhookEnabled,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingConfig) {
+        await webhookSupabase
+          .from('spooler_webhook_config')
+          .update(configData)
+          .eq('service_id', service.id);
+      } else {
+        await webhookSupabase
+          .from('spooler_webhook_config')
+          .insert(configData);
+      }
+
+      await onWebhookUpdate(service.id, startWebhookUrl, startWebhookEnabled, stopWebhookUrl, stopWebhookEnabled);
+      setIsConfigOpen(false);
+    } catch (error) {
+      console.error('Error saving webhook config:', error);
+    }
   };
 
   return (
