@@ -89,14 +89,38 @@ function App() {
       return;
     }
 
-    updateService(serviceId, { status: 'Running' });
-    window.location.href = service.start_webhook_url;
+    try {
+      updateService(serviceId, { status: 'Running' });
 
-    addAlert({
-      type: 'success',
-      title: 'Dienst gestartet',
-      message: `${service.display_name} wurde erfolgreich gestartet`,
-    });
+      const response = await fetch(service.start_webhook_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: serviceId,
+          action: 'start',
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (response.ok) {
+        addAlert({
+          type: 'success',
+          title: 'Dienst gestartet',
+          message: `${service.display_name} wurde erfolgreich gestartet`,
+        });
+      } else {
+        throw new Error('Webhook request failed');
+      }
+    } catch (error) {
+      addAlert({
+        type: 'error',
+        title: 'Webhook Fehler',
+        message: 'Fehler beim Auslösen des Start Webhooks',
+      });
+      updateService(serviceId, { status: 'Stopped' });
+    }
   };
 
   const handleStopWebhook = async (serviceId: string) => {
@@ -110,14 +134,38 @@ function App() {
       return;
     }
 
-    updateService(serviceId, { status: 'Stopped' });
-    window.location.href = service.stop_webhook_url;
+    try {
+      updateService(serviceId, { status: 'Stopped' });
 
-    addAlert({
-      type: 'success',
-      title: 'Dienst gestoppt',
-      message: `${service.display_name} wurde erfolgreich gestoppt`,
-    });
+      const response = await fetch(service.stop_webhook_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: serviceId,
+          action: 'stop',
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (response.ok) {
+        addAlert({
+          type: 'success',
+          title: 'Dienst gestoppt',
+          message: `${service.display_name} wurde erfolgreich gestoppt`,
+        });
+      } else {
+        throw new Error('Webhook request failed');
+      }
+    } catch (error) {
+      addAlert({
+        type: 'error',
+        title: 'Webhook Fehler',
+        message: 'Fehler beim Auslösen des Stop Webhooks',
+      });
+      updateService(serviceId, { status: 'Running' });
+    }
   };
 
   const handleWebhookUpdate = async (
