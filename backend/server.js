@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { connectDB } from './db.js';
 import monitoringRoutes from './routes/monitoring.js';
 import webhookRoutes from './routes/webhooks.js';
+import clientRoutes from './routes/clients.js';
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
+app.use('/api/clients', clientRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/monitoring/webhooks', webhookRoutes);
 

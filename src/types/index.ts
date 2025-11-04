@@ -1,5 +1,28 @@
+export interface Client {
+  id: string;
+  name: string;
+  ip_address: string;
+  operating_system: 'Windows' | 'Linux' | 'macOS';
+  monitoring_template: MonitoringTemplate;
+  status: 'online' | 'offline' | 'warning';
+  last_seen: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MonitoringTemplate {
+  cpu: boolean;
+  gpu: boolean;
+  ram: boolean;
+  drives: boolean;
+  services: boolean;
+  network: boolean;
+  processes: boolean;
+}
+
 export interface Service {
   id: string;
+  client_id: string;
   name: string;
   display_name: string;
   status: 'Running' | 'Stopped' | 'Paused';
@@ -18,6 +41,27 @@ export interface Service {
   stop_webhook_enabled?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface SystemMetrics {
+  id: string;
+  client_id: string;
+  cpu_usage: number;
+  gpu_usage?: number;
+  ram_usage: number;
+  ram_total: number;
+  drives: DriveInfo[];
+  network_upload: number;
+  network_download: number;
+  timestamp: string;
+}
+
+export interface DriveInfo {
+  name: string;
+  total: number;
+  used: number;
+  free: number;
+  percentage: number;
 }
 
 export interface ServiceLog {
