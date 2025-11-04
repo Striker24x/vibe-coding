@@ -7,12 +7,15 @@ import { Toast } from './components/Toast';
 import { AddClientModal } from './components/AddClientModal';
 import { ClientCard } from './components/ClientCard';
 import { ClientDashboard } from './components/ClientDashboard';
+import { ClientSettingsModal } from './components/ClientSettingsModal';
 import { Client } from './types';
 
 function App() {
-  const { clients, selectedClientId, theme, toggleTheme, addClient, selectClient, addAlert } = useStore();
+  const { clients, selectedClientId, theme, toggleTheme, addClient, updateClient, selectClient, addAlert, setClients } = useStore();
   const { fetchData } = useDataSync();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [selectedSettingsClient, setSelectedSettingsClient] = useState<Client | null>(null);
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50';
@@ -43,6 +46,33 @@ function App() {
 
   const handleBackToOverview = () => {
     selectClient(null);
+  };
+
+  const handleSettingsClick = (clientId: string) => {
+    const client = clients.find((c) => c.id === clientId);
+    if (client) {
+      setSelectedSettingsClient(client);
+      setShowSettingsModal(true);
+    }
+  };
+
+  const handleUpdateClient = (updatedClient: Client) => {
+    updateClient(updatedClient.id, updatedClient);
+    addAlert({
+      type: 'success',
+      title: 'Client aktualisiert',
+      message: `${updatedClient.name} wurde erfolgreich aktualisiert`,
+    });
+  };
+
+  const handleDeleteClient = (clientId: string) => {
+    const client = clients.find((c) => c.id === clientId);
+    setClients(clients.filter((c) => c.id !== clientId));
+    addAlert({
+      type: 'success',
+      title: 'Client gelöscht',
+      message: `${client?.name || 'Client'} wurde erfolgreich gelöscht`,
+    });
   };
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
@@ -125,6 +155,7 @@ function App() {
                 key={client.id}
                 client={client}
                 onClick={handleClientClick}
+                onSettingsClick={handleSettingsClick}
                 theme={theme}
               />
             ))}
@@ -138,6 +169,20 @@ function App() {
         onAdd={handleAddClient}
         theme={theme}
       />
+
+      {selectedSettingsClient && (
+        <ClientSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => {
+            setShowSettingsModal(false);
+            setSelectedSettingsClient(null);
+          }}
+          onUpdate={handleUpdateClient}
+          onDelete={handleDeleteClient}
+          client={selectedSettingsClient}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }

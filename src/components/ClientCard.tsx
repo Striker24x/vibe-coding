@@ -1,13 +1,14 @@
-import { Monitor, Circle, ChevronRight } from 'lucide-react';
+import { Monitor, Circle, ChevronRight, Settings } from 'lucide-react';
 import { Client } from '../types';
 
 interface ClientCardProps {
   client: Client;
   onClick: (clientId: string) => void;
+  onSettingsClick: (clientId: string) => void;
   theme: 'dark' | 'light';
 }
 
-export function ClientCard({ client, onClick, theme }: ClientCardProps) {
+export function ClientCard({ client, onClick, onSettingsClick, theme }: ClientCardProps) {
   const bgClass = theme === 'dark' ? 'bg-slate-800' : 'bg-white';
   const textClass = theme === 'dark' ? 'text-white' : 'text-gray-900';
   const mutedClass = theme === 'dark' ? 'text-gray-400' : 'text-gray-600';
@@ -22,6 +23,11 @@ export function ClientCard({ client, onClick, theme }: ClientCardProps) {
     .filter(([_, enabled]) => enabled)
     .map(([key]) => key.toUpperCase())
     .join(', ');
+
+  const handleSettingsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSettingsClick(client.id);
+  };
 
   return (
     <div
@@ -38,7 +44,16 @@ export function ClientCard({ client, onClick, theme }: ClientCardProps) {
             <p className={`text-sm ${mutedClass}`}>{client.operating_system}</p>
           </div>
         </div>
-        <ChevronRight className={mutedClass} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSettingsClick}
+            className={`p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500 transition-colors ${mutedClass} hover:text-blue-500`}
+            title="Einstellungen"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          <ChevronRight className={mutedClass} />
+        </div>
       </div>
 
       <div className="space-y-2">
