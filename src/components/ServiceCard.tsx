@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Play, Square, RotateCw, Activity, AlertCircle } from 'lucide-react';
 import { Service } from '../types';
 import { formatUptime, formatTimestamp } from '../utils/mockData';
+import { MiniSparkline } from './MiniSparkline';
 
 interface ServiceCardProps {
   service: Service;
@@ -9,6 +11,20 @@ interface ServiceCardProps {
 }
 
 export function ServiceCard({ service, onAction, theme }: ServiceCardProps) {
+  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+  const [memoryHistory, setMemoryHistory] = useState<number[]>([]);
+
+  useEffect(() => {
+    setCpuHistory(prev => {
+      const updated = [...prev, service.cpu_usage];
+      return updated.slice(-15);
+    });
+    setMemoryHistory(prev => {
+      const updated = [...prev, service.memory_usage];
+      return updated.slice(-15);
+    });
+  }, [service.cpu_usage, service.memory_usage]);
+
   const statusColor =
     service.status === 'Running'
       ? 'bg-green-500'
@@ -62,6 +78,11 @@ export function ServiceCard({ service, onAction, theme }: ServiceCardProps) {
           <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {service.cpu_usage.toFixed(1)}%
           </p>
+          {cpuHistory.length > 2 && (
+            <div className="mt-1 -mb-1">
+              <MiniSparkline data={cpuHistory} color={service.cpu_usage > 80 ? '#ef4444' : '#10b981'} height={20} />
+            </div>
+          )}
         </div>
         <div>
           <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -70,6 +91,11 @@ export function ServiceCard({ service, onAction, theme }: ServiceCardProps) {
           <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {service.memory_usage.toFixed(0)} MB
           </p>
+          {memoryHistory.length > 2 && (
+            <div className="mt-1 -mb-1">
+              <MiniSparkline data={memoryHistory} color={service.memory_usage > 1000 ? '#f59e0b' : '#3b82f6'} height={20} />
+            </div>
+          )}
         </div>
         <div>
           <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>

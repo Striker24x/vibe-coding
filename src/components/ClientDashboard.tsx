@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ArrowLeft, Server, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
+import { ArrowLeft, Server, AlertTriangle, TrendingUp, Activity, Cpu, HardDrive } from 'lucide-react';
 import { Client } from '../types';
 import { useStore } from '../store/useStore';
 import { ServiceCard } from './ServiceCard';
@@ -8,6 +8,10 @@ import { MetricsChart } from './MetricsChart';
 import { StatsCard } from './StatsCard';
 import { WorkflowHistoryPanel } from './WorkflowHistory';
 import { SystemHealthChart } from './SystemHealthChart';
+import { RealtimeChart } from './RealtimeChart';
+import { GaugeChart } from './GaugeChart';
+import { LiveActivityFeed } from './LiveActivityFeed';
+import { PerformanceScore } from './PerformanceScore';
 
 interface ClientDashboardProps {
   client: Client;
@@ -138,6 +142,39 @@ export function ClientDashboard({ client, onBack, theme }: ClientDashboardProps)
           </div>
         ) : (
           <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="lg:col-span-2">
+                <RealtimeChart clientId={client.id} theme={theme} />
+              </div>
+              <PerformanceScore services={clientServices} theme={theme} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <GaugeChart
+                value={avgCpu}
+                max={100}
+                label="CPU Usage"
+                unit="%"
+                theme={theme}
+                icon={<Cpu className="w-6 h-6" />}
+              />
+              <GaugeChart
+                value={clientServices.length > 0 ? clientServices.reduce((sum, s) => sum + s.memory_usage, 0) / clientServices.length : 0}
+                max={2000}
+                label="Memory Usage"
+                unit="MB"
+                theme={theme}
+              />
+              <GaugeChart
+                value={clientServices.length > 0 ? clientServices.reduce((sum, s) => sum + s.disk_io, 0) / clientServices.length : 0}
+                max={100}
+                label="Disk I/O"
+                unit="MB/s"
+                theme={theme}
+                icon={<HardDrive className="w-6 h-6" />}
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
               {clientServices.map((service) => (
                 <ServiceCard
@@ -156,7 +193,7 @@ export function ClientDashboard({ client, onBack, theme }: ClientDashboardProps)
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <LogViewer logs={logs} theme={theme} />
+              <LiveActivityFeed logs={logs} theme={theme} />
               <WorkflowHistoryPanel history={workflowHistory} services={clientServices} theme={theme} />
             </div>
           </>
