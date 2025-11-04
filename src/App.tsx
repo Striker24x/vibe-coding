@@ -78,110 +78,23 @@ function App() {
     }
   };
 
-  const handleStartWebhook = async (serviceId: string) => {
+  const handleWebhookTrigger = async (serviceId: string) => {
     const service = services.find((s) => s.id === serviceId);
-    if (!service || !service.start_webhook_url || !service.start_webhook_enabled) {
+    if (!service || !service.webhook_url || !service.webhook_enabled) {
       addAlert({
         type: 'error',
         title: 'Webhook Fehler',
-        message: 'Start Webhook ist nicht konfiguriert oder deaktiviert',
+        message: 'Webhook ist nicht konfiguriert oder deaktiviert',
       });
       return;
     }
 
-    try {
-      updateService(serviceId, { status: 'Running' });
-
-      const response = await fetch(service.start_webhook_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          service_id: serviceId,
-          action: 'start',
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      if (response.ok) {
-        addAlert({
-          type: 'success',
-          title: 'Dienst gestartet',
-          message: `${service.display_name} wurde erfolgreich gestartet`,
-        });
-      } else {
-        throw new Error('Webhook request failed');
-      }
-    } catch (error) {
-      addAlert({
-        type: 'error',
-        title: 'Webhook Fehler',
-        message: 'Fehler beim Auslösen des Start Webhooks',
-      });
-      updateService(serviceId, { status: 'Stopped' });
-    }
+    window.location.href = service.webhook_url;
   };
 
-  const handleStopWebhook = async (serviceId: string) => {
-    const service = services.find((s) => s.id === serviceId);
-    if (!service || !service.stop_webhook_url || !service.stop_webhook_enabled) {
-      addAlert({
-        type: 'error',
-        title: 'Webhook Fehler',
-        message: 'Stop Webhook ist nicht konfiguriert oder deaktiviert',
-      });
-      return;
-    }
-
+  const handleWebhookUpdate = async (serviceId: string, webhookUrl: string, enabled: boolean) => {
     try {
-      updateService(serviceId, { status: 'Stopped' });
-
-      const response = await fetch(service.stop_webhook_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          service_id: serviceId,
-          action: 'stop',
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      if (response.ok) {
-        addAlert({
-          type: 'success',
-          title: 'Dienst gestoppt',
-          message: `${service.display_name} wurde erfolgreich gestoppt`,
-        });
-      } else {
-        throw new Error('Webhook request failed');
-      }
-    } catch (error) {
-      addAlert({
-        type: 'error',
-        title: 'Webhook Fehler',
-        message: 'Fehler beim Auslösen des Stop Webhooks',
-      });
-      updateService(serviceId, { status: 'Running' });
-    }
-  };
-
-  const handleWebhookUpdate = async (
-    serviceId: string,
-    startUrl: string,
-    startEnabled: boolean,
-    stopUrl: string,
-    stopEnabled: boolean
-  ) => {
-    try {
-      updateService(serviceId, {
-        start_webhook_url: startUrl,
-        start_webhook_enabled: startEnabled,
-        stop_webhook_url: stopUrl,
-        stop_webhook_enabled: stopEnabled,
-      });
+      updateService(serviceId, { webhook_url: webhookUrl, webhook_enabled: enabled });
 
       addAlert({
         type: 'success',
@@ -235,8 +148,7 @@ function App() {
         {services.find((s) => s.name === 'spooler') && (
           <PrintSpoolerControl
             service={services.find((s) => s.name === 'spooler')!}
-            onStartWebhook={handleStartWebhook}
-            onStopWebhook={handleStopWebhook}
+            onWebhookTrigger={handleWebhookTrigger}
             onWebhookUpdate={handleWebhookUpdate}
             theme={theme}
           />
