@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, Service, ServiceLog, WorkflowHistory, DashboardConfig, Alert, SystemMetrics } from '../types';
+import { Client, Service, ServiceLog, WorkflowHistory, DashboardConfig, Alert } from '../types';
 
 interface AppState {
   clients: Client[];
@@ -11,7 +11,6 @@ interface AppState {
   config: DashboardConfig | null;
   alerts: Alert[];
   theme: 'dark' | 'light';
-  clientMetrics: Record<string, SystemMetrics[]>;
   setClients: (clients: Client[]) => void;
   addClient: (client: Client) => void;
   updateClient: (id: string, updates: Partial<Client>) => void;
@@ -27,13 +26,11 @@ interface AppState {
   addAlert: (alert: Omit<Alert, 'id' | 'timestamp'>) => void;
   removeAlert: (id: string) => void;
   toggleTheme: () => void;
-  addMetrics: (clientId: string, metrics: SystemMetrics) => void;
-  getClientMetrics: (clientId: string) => SystemMetrics[];
 }
 
 export const useStore = create<AppState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       clients: [],
       selectedClientId: null,
       services: [],
@@ -42,7 +39,6 @@ export const useStore = create<AppState>()(
       config: null,
       alerts: [],
       theme: 'dark',
-      clientMetrics: {},
 
       setClients: (clients) => set({ clients }),
 
@@ -113,22 +109,6 @@ export const useStore = create<AppState>()(
         set((state) => ({
           theme: state.theme === 'dark' ? 'light' : 'dark',
         })),
-
-      addMetrics: (clientId, metrics) =>
-        set((state) => ({
-          clientMetrics: {
-            ...state.clientMetrics,
-            [clientId]: [
-              ...(state.clientMetrics[clientId] || []),
-              metrics,
-            ].slice(-100),
-          },
-        })),
-
-      getClientMetrics: (clientId) => {
-        const state = get();
-        return state.clientMetrics[clientId] || [];
-      },
     }),
     {
       name: 'maintenance-dashboard-storage',

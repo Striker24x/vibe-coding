@@ -13,7 +13,6 @@ export function AddClientModal({ isOpen, onClose, onAdd, theme }: AddClientModal
   const [name, setName] = useState('');
   const [ipAddress, setIpAddress] = useState('');
   const [os, setOs] = useState<'Windows' | 'Linux' | 'macOS'>('Windows');
-  const [isDemo, setIsDemo] = useState(false);
   const [template, setTemplate] = useState<MonitoringTemplate>({
     cpu: true,
     gpu: false,
@@ -33,13 +32,11 @@ export function AddClientModal({ isOpen, onClose, onAdd, theme }: AddClientModal
       ip_address: ipAddress,
       operating_system: os,
       monitoring_template: template,
-      is_demo: isDemo,
     });
 
     setName('');
     setIpAddress('');
     setOs('Windows');
-    setIsDemo(false);
     setTemplate({
       cpu: true,
       gpu: false,
@@ -114,25 +111,6 @@ export function AddClientModal({ isOpen, onClose, onAdd, theme }: AddClientModal
               <option value="Linux">Linux</option>
               <option value="macOS">macOS</option>
             </select>
-          </div>
-
-          <div className={`p-4 rounded-lg ${isDemo ? 'bg-green-500/10 border-2 border-green-500' : inputBg}`}>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isDemo}
-                onChange={(e) => setIsDemo(e.target.checked)}
-                className="w-4 h-4 text-green-600 rounded focus:ring-2 focus:ring-green-500"
-              />
-              <span className={`font-medium ${textClass}`}>
-                Test-Maschine mit Demo Live-Daten
-              </span>
-            </label>
-            {isDemo && (
-              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-2`}>
-                Generiert realistische Live-Daten für Testzwecke
-              </p>
-            )}
           </div>
 
           <div>

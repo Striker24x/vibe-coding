@@ -5,7 +5,6 @@ export interface Client {
   operating_system: 'Windows' | 'Linux' | 'macOS';
   monitoring_template: MonitoringTemplate;
   status: 'online' | 'offline' | 'warning';
-  is_demo: boolean;
   last_seen: string;
   created_at: string;
   updated_at: string;

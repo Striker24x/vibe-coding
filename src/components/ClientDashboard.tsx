@@ -1,15 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ArrowLeft, Server, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
-import { Client, SystemMetrics } from '../types';
+import { Client } from '../types';
 import { useStore } from '../store/useStore';
 import { ServiceCard } from './ServiceCard';
 import { LogViewer } from './LogViewer';
 import { MetricsChart } from './MetricsChart';
 import { StatsCard } from './StatsCard';
 import { WorkflowHistoryPanel } from './WorkflowHistory';
-import { SystemMetricsPanel } from './SystemMetricsPanel';
-import { LiveMetricsChart } from './LiveMetricsChart';
-import { startDemoDataGeneration } from '../utils/demoDataGenerator';
 
 interface ClientDashboardProps {
   client: Client;
@@ -18,22 +15,9 @@ interface ClientDashboardProps {
 }
 
 export function ClientDashboard({ client, onBack, theme }: ClientDashboardProps) {
-  const { services, logs, workflowHistory, updateService, addAlert, addMetrics, getClientMetrics } = useStore();
-  const [currentMetrics, setCurrentMetrics] = useState<SystemMetrics | null>(null);
-  const metricsHistory = getClientMetrics(client.id);
+  const { services, logs, workflowHistory, updateService, addAlert } = useStore();
 
   const clientServices = services.filter((s) => s.client_id === client.id);
-
-  useEffect(() => {
-    if (client.is_demo) {
-      const stopGeneration = startDemoDataGeneration(client.id, (metrics) => {
-        setCurrentMetrics(metrics);
-        addMetrics(client.id, metrics);
-      });
-
-      return () => stopGeneration();
-    }
-  }, [client.id, client.is_demo, addMetrics]);
 
   const handleServiceAction = async (serviceId: string, action: 'start' | 'stop' | 'restart') => {
     const service = clientServices.find((s) => s.id === serviceId);
@@ -99,11 +83,6 @@ export function ClientDashboard({ client, onBack, theme }: ClientDashboardProps)
               <h1 className={`text-3xl font-bold ${textClass}`}>{client.name}</h1>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
                 {client.ip_address} • {client.operating_system}
-                {client.is_demo && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-green-500/20 text-green-500 rounded">
-                    DEMO
-                  </span>
-                )}
               </p>
             </div>
             <div className={`px-4 py-2 rounded-lg ${
@@ -115,16 +94,6 @@ export function ClientDashboard({ client, onBack, theme }: ClientDashboardProps)
             </div>
           </div>
         </div>
-
-        {client.is_demo && (
-          <>
-            <SystemMetricsPanel metrics={currentMetrics} theme={theme} />
-
-            <div className="mt-6">
-              <LiveMetricsChart metricsHistory={metricsHistory} theme={theme} />
-            </div>
-          </>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatsCard
