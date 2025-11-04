@@ -25,7 +25,7 @@ function App() {
     const newClient: Client = {
       ...clientData,
       id: Math.random().toString(36).substr(2, 9),
-      status: 'offline',
+      status: clientData.is_demo ? 'online' : 'offline',
       last_seen: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
