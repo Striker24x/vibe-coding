@@ -1,20 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, Service, ServiceLog, WorkflowHistory, DashboardConfig, Alert } from '../types';
+import { Service, ServiceLog, WorkflowHistory, DashboardConfig, Alert } from '../types';
 
 interface AppState {
-  clients: Client[];
-  selectedClientId: string | null;
   services: Service[];
   logs: ServiceLog[];
   workflowHistory: WorkflowHistory[];
   config: DashboardConfig | null;
   alerts: Alert[];
   theme: 'dark' | 'light';
-  setClients: (clients: Client[]) => void;
-  addClient: (client: Client) => void;
-  updateClient: (id: string, updates: Partial<Client>) => void;
-  selectClient: (id: string | null) => void;
   setServices: (services: Service[]) => void;
   updateService: (id: string, updates: Partial<Service>) => void;
   addLog: (log: ServiceLog) => void;
@@ -31,30 +25,12 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
-      clients: [],
-      selectedClientId: null,
       services: [],
       logs: [],
       workflowHistory: [],
       config: null,
       alerts: [],
       theme: 'dark',
-
-      setClients: (clients) => set({ clients }),
-
-      addClient: (client) =>
-        set((state) => ({
-          clients: [...state.clients, client],
-        })),
-
-      updateClient: (id, updates) =>
-        set((state) => ({
-          clients: state.clients.map((c) =>
-            c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c
-          ),
-        })),
-
-      selectClient: (id) => set({ selectedClientId: id }),
 
       setServices: (services) => set({ services }),
 
