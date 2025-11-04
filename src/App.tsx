@@ -9,6 +9,7 @@ import { ClientCard } from './components/ClientCard';
 import { ClientDashboard } from './components/ClientDashboard';
 import { ClientSettingsModal } from './components/ClientSettingsModal';
 import { Client } from './types';
+import { generateMockServices, generateMockLog } from './utils/mockData';
 
 function App() {
   const { clients, selectedClientId, theme, toggleTheme, addClient, updateClient, selectClient, addAlert, setClients } = useStore();
@@ -22,10 +23,13 @@ function App() {
   }, [theme]);
 
   const handleAddClient = (clientData: Omit<Client, 'id' | 'status' | 'last_seen' | 'created_at' | 'updated_at'>) => {
+    const newClientId = Math.random().toString(36).substr(2, 9);
+    const isDemo = clientData.name === 'Demo-Server';
+
     const newClient: Client = {
       ...clientData,
-      id: Math.random().toString(36).substr(2, 9),
-      status: 'offline',
+      id: newClientId,
+      status: isDemo ? 'online' : 'offline',
       last_seen: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -33,10 +37,56 @@ function App() {
 
     addClient(newClient);
 
+    if (isDemo) {
+      const demoServices = generateMockServices(12, newClientId).map(service => ({
+        ...service,
+        id: `${newClientId}-${service.id}`,
+      }));
+
+      useStore.getState().setServices([
+        ...useStore.getState().services,
+        ...demoServices,
+      ]);
+
+      for (let i = 0; i < 50; i++) {
+        const randomService = demoServices[Math.floor(Math.random() * demoServices.length)];
+        useStore.getState().addLog(generateMockLog(randomService.id));
+      }
+
+      const updateDemoData = () => {
+        const currentServices = useStore.getState().services;
+        const demoServices = currentServices.filter(s => s.client_id === newClientId);
+
+        if (demoServices.length === 0) return;
+
+        demoServices.forEach(service => {
+          const variance = 0.1;
+          const updates = {
+            cpu_usage: Math.max(0, Math.min(100, service.cpu_usage + (Math.random() - 0.5) * variance * 20)),
+            memory_usage: Math.max(50, service.memory_usage + (Math.random() - 0.5) * variance * 100),
+            disk_io: Math.max(0, service.disk_io + (Math.random() - 0.5) * variance * 10),
+            network_stats: Math.max(0, service.network_stats + (Math.random() - 0.5) * variance * 200),
+            uptime: service.status === 'Running' ? service.uptime + 3 : 0,
+          };
+          useStore.getState().updateService(service.id, updates);
+        });
+
+        if (Math.random() < 0.3) {
+          const randomService = demoServices[Math.floor(Math.random() * demoServices.length)];
+          useStore.getState().addLog(generateMockLog(randomService.id));
+        }
+      };
+
+      const intervalId = setInterval(updateDemoData, 3000);
+
+      (window as any).__demoIntervals = (window as any).__demoIntervals || [];
+      (window as any).__demoIntervals.push(intervalId);
+    }
+
     addAlert({
       type: 'success',
       title: 'Client hinzugefügt',
-      message: `${newClient.name} wurde erfolgreich hinzugefügt`,
+      message: `${newClient.name} wurde erfolgreich hinzugefügt${isDemo ? ' mit Live-Demo-Daten' : ''}`,
     });
   };
 
@@ -67,6 +117,15 @@ function App() {
 
   const handleDeleteClient = (clientId: string) => {
     const client = clients.find((c) => c.id === clientId);
+
+    if ((window as any).__demoIntervals) {
+      (window as any).__demoIntervals.forEach((id: number) => clearInterval(id));
+      (window as any).__demoIntervals = [];
+    }
+
+    const updatedServices = useStore.getState().services.filter(s => s.client_id !== clientId);
+    useStore.getState().setServices(updatedServices);
+
     setClients(clients.filter((c) => c.id !== clientId));
     addAlert({
       type: 'success',

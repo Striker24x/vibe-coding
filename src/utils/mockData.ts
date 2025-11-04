@@ -54,7 +54,7 @@ const LOG_MESSAGES = {
   ],
 };
 
-export function generateMockServices(count: number = 12): Service[] {
+export function generateMockServices(count: number = 12, clientId: string = 'default-client'): Service[] {
   const services: Service[] = [];
   const now = Date.now();
 
@@ -67,6 +67,7 @@ export function generateMockServices(count: number = 12): Service[] {
 
     services.push({
       id: `service-${i}`,
+      client_id: clientId,
       name: WINDOWS_SERVICES[i].name,
       display_name: WINDOWS_SERVICES[i].display_name,
       status,

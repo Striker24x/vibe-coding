@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, TestTube } from 'lucide-react';
 import { Client, MonitoringTemplate } from '../types';
 
 interface AddClientModalProps {
@@ -45,6 +45,24 @@ export function AddClientModal({ isOpen, onClose, onAdd, theme }: AddClientModal
       services: true,
       network: false,
       processes: false,
+    });
+    onClose();
+  };
+
+  const handleAddDemoClient = () => {
+    onAdd({
+      name: 'Demo-Server',
+      ip_address: '192.168.1.250',
+      operating_system: 'Windows',
+      monitoring_template: {
+        cpu: true,
+        gpu: true,
+        ram: true,
+        drives: true,
+        services: true,
+        network: true,
+        processes: true,
+      },
     });
     onClose();
   };
@@ -137,21 +155,32 @@ export function AddClientModal({ isOpen, onClose, onAdd, theme }: AddClientModal
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col gap-3 pt-4">
             <button
               type="button"
-              onClick={onClose}
-              className={`flex-1 px-4 py-2 border ${borderClass} rounded-lg ${textClass} hover:bg-opacity-10 hover:bg-gray-500 transition-colors`}
+              onClick={handleAddDemoClient}
+              className="w-full px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2"
             >
-              Abbrechen
+              <TestTube className="w-5 h-5" />
+              Demo-Client mit Live-Daten hinzufügen
             </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Client hinzufügen
-            </button>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className={`flex-1 px-4 py-2 border ${borderClass} rounded-lg ${textClass} hover:bg-opacity-10 hover:bg-gray-500 transition-colors`}
+              >
+                Abbrechen
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Client hinzufügen
+              </button>
+            </div>
           </div>
         </form>
       </div>

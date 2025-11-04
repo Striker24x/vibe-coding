@@ -7,6 +7,7 @@ import { LogViewer } from './LogViewer';
 import { MetricsChart } from './MetricsChart';
 import { StatsCard } from './StatsCard';
 import { WorkflowHistoryPanel } from './WorkflowHistory';
+import { SystemHealthChart } from './SystemHealthChart';
 
 interface ClientDashboardProps {
   client: Client;
@@ -149,6 +150,10 @@ export function ClientDashboard({ client, onBack, theme }: ClientDashboardProps)
             </div>
 
             <MetricsChart services={clientServices} theme={theme} />
+
+            <div className="mt-6">
+              <SystemHealthChart services={clientServices} theme={theme} />
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               <LogViewer logs={logs} theme={theme} />
