@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useStore } from '../store/useStore';
+import { api } from '../lib/api';
 import { generateMockServices, generateMockLog, updateServiceMetrics } from '../utils/mockData';
 
 export function useDataSync() {
@@ -8,14 +9,59 @@ export function useDataSync() {
     setServices,
     updateService,
     addLog,
+    setLogs,
+    setWorkflowHistory,
+    setConfig,
   } = useStore();
 
-  const initializeData = useCallback(() => {
-    if (services.length === 0) {
-      const mockServices = generateMockServices(12);
-      setServices(mockServices);
+  const fetchServices = useCallback(async () => {
+    const { data, error } = await api.services.getAll();
+    if (data && Array.isArray(data)) {
+      setServices(data);
+    } else if (error) {
+      console.error('Failed to fetch services:', error);
+      if (services.length === 0) {
+        const mockServices = generateMockServices(12);
+        setServices(mockServices);
+      }
     }
-  }, [services.length, setServices]);
+  }, [setServices, services.length]);
+
+  const fetchLogs = useCallback(async () => {
+    const { data, error } = await api.logs.getAll();
+    if (data && Array.isArray(data)) {
+      setLogs(data);
+    } else if (error) {
+      console.error('Failed to fetch logs:', error);
+    }
+  }, [setLogs]);
+
+  const fetchWorkflows = useCallback(async () => {
+    const { data, error } = await api.workflows.getAll();
+    if (data && Array.isArray(data)) {
+      setWorkflowHistory(data);
+    } else if (error) {
+      console.error('Failed to fetch workflows:', error);
+    }
+  }, [setWorkflowHistory]);
+
+  const fetchConfig = useCallback(async () => {
+    const { data, error } = await api.config.get();
+    if (data) {
+      setConfig(data);
+    } else if (error) {
+      console.error('Failed to fetch config:', error);
+    }
+  }, [setConfig]);
+
+  const initializeData = useCallback(async () => {
+    await Promise.all([
+      fetchServices(),
+      fetchLogs(),
+      fetchWorkflows(),
+      fetchConfig(),
+    ]);
+  }, [fetchServices, fetchLogs, fetchWorkflows, fetchConfig]);
 
   const updateServiceMetricsLocal = useCallback(() => {
     if (services.length === 0) return;
@@ -42,7 +88,7 @@ export function useDataSync() {
   useEffect(() => {
     const interval = setInterval(() => {
       updateServiceMetricsLocal();
-    }, 500);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [updateServiceMetricsLocal]);
