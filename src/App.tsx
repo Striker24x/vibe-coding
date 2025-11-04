@@ -1,143 +1,308 @@
-import { useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useEffect } from 'react';
+import { Server, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
 import { useStore } from './store/useStore';
 import { useDataSync } from './hooks/useDataSync';
+import { useSelfHealing } from './hooks/useSelfHealing';
 import { Header } from './components/Header';
 import { Toast } from './components/Toast';
-import { AddClientModal } from './components/AddClientModal';
-import { ClientCard } from './components/ClientCard';
-import { ClientDashboard } from './components/ClientDashboard';
-import { Client } from './types';
+import { ServiceCard } from './components/ServiceCard';
+import { LogViewer } from './components/LogViewer';
+import { MetricsChart } from './components/MetricsChart';
+import { SelfHealButton } from './components/SelfHealButton';
+import { WorkflowHistoryPanel } from './components/WorkflowHistory';
+import { ConfigPanel } from './components/ConfigPanel';
+import { StatsCard } from './components/StatsCard';
+import { PrintSpoolerControl } from './components/PrintSpoolerControl';
 
 function App() {
-  const { clients, selectedClientId, theme, toggleTheme, addClient, selectClient, addAlert } = useStore();
+  const { services, logs, workflowHistory, config, theme, toggleTheme, updateService, setConfig, addAlert } = useStore();
   const { fetchData } = useDataSync();
-  const [showAddModal, setShowAddModal] = useState(false);
+  const { triggerSelfHeal } = useSelfHealing();
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50';
   }, [theme]);
 
-  const handleAddClient = (clientData: Omit<Client, 'id' | 'status' | 'last_seen' | 'created_at' | 'updated_at'>) => {
-    const newClient: Client = {
-      ...clientData,
-      id: Math.random().toString(36).substr(2, 9),
-      status: 'offline',
-      last_seen: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+  const handleServiceAction = async (serviceId: string, action: 'start' | 'stop' | 'restart') => {
+    const service = services.find((s) => s.id === serviceId);
+    if (!service) return;
+
+    let newStatus: 'Running' | 'Stopped' | 'Paused' = service.status;
+    let message = '';
+
+    switch (action) {
+      case 'start':
+        newStatus = 'Running';
+        message = `${service.display_name} started successfully`;
+        break;
+      case 'stop':
+        newStatus = 'Stopped';
+        message = `${service.display_name} stopped`;
+        break;
+      case 'restart':
+        newStatus = 'Running';
+        message = `${service.display_name} restarted`;
+        break;
+    }
+
+    const updates = {
+      status: newStatus,
+      last_restart: action === 'restart' ? new Date().toISOString() : service.last_restart,
+      uptime: action === 'stop' ? 0 : service.uptime,
     };
 
-    addClient(newClient);
+    updateService(serviceId, updates);
 
     addAlert({
       type: 'success',
-      title: 'Client hinzugefügt',
-      message: `${newClient.name} wurde erfolgreich hinzugefügt`,
+      title: 'Action Completed',
+      message,
     });
   };
 
-  const handleClientClick = (clientId: string) => {
-    selectClient(clientId);
+  const handleConfigSave = async (newConfig: Partial<typeof config>) => {
+    try {
+      setConfig({ ...config, ...newConfig } as typeof config);
+
+      addAlert({
+        type: 'success',
+        title: 'Configuration Saved',
+        message: 'Dashboard settings have been updated',
+      });
+    } catch (error) {
+      addAlert({
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Failed to save configuration',
+      });
+    }
   };
 
-  const handleBackToOverview = () => {
-    selectClient(null);
+  const handleStartWebhook = async (serviceId: string) => {
+    const service = services.find((s) => s.id === serviceId);
+    if (!service || !service.start_webhook_url || !service.start_webhook_enabled) {
+      addAlert({
+        type: 'error',
+        title: 'Webhook Fehler',
+        message: 'Start Webhook ist nicht konfiguriert oder deaktiviert',
+      });
+      return;
+    }
+
+    try {
+      updateService(serviceId, { status: 'Running' });
+
+      const response = await fetch(service.start_webhook_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: serviceId,
+          action: 'start',
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (response.ok) {
+        addAlert({
+          type: 'success',
+          title: 'Dienst gestartet',
+          message: `${service.display_name} wurde erfolgreich gestartet`,
+        });
+      } else {
+        throw new Error('Webhook request failed');
+      }
+    } catch (error) {
+      addAlert({
+        type: 'error',
+        title: 'Webhook Fehler',
+        message: 'Fehler beim Auslösen des Start Webhooks',
+      });
+      updateService(serviceId, { status: 'Stopped' });
+    }
   };
 
-  const selectedClient = clients.find((c) => c.id === selectedClientId);
+  const handleStopWebhook = async (serviceId: string) => {
+    const service = services.find((s) => s.id === serviceId);
+    if (!service || !service.stop_webhook_url || !service.stop_webhook_enabled) {
+      addAlert({
+        type: 'error',
+        title: 'Webhook Fehler',
+        message: 'Stop Webhook ist nicht konfiguriert oder deaktiviert',
+      });
+      return;
+    }
 
-  if (selectedClient) {
-    return (
-      <>
-        <Header
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          servicesRunning={0}
-          totalServices={0}
-        />
-        <Toast />
-        <ClientDashboard
-          client={selectedClient}
-          onBack={handleBackToOverview}
-          theme={theme}
-        />
-      </>
-    );
-  }
+    try {
+      updateService(serviceId, { status: 'Stopped' });
 
-  const bgClass = theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50';
-  const textClass = theme === 'dark' ? 'text-white' : 'text-gray-900';
+      const response = await fetch(service.stop_webhook_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: serviceId,
+          action: 'stop',
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (response.ok) {
+        addAlert({
+          type: 'success',
+          title: 'Dienst gestoppt',
+          message: `${service.display_name} wurde erfolgreich gestoppt`,
+        });
+      } else {
+        throw new Error('Webhook request failed');
+      }
+    } catch (error) {
+      addAlert({
+        type: 'error',
+        title: 'Webhook Fehler',
+        message: 'Fehler beim Auslösen des Stop Webhooks',
+      });
+      updateService(serviceId, { status: 'Running' });
+    }
+  };
+
+  const handleWebhookUpdate = async (
+    serviceId: string,
+    startUrl: string,
+    startEnabled: boolean,
+    stopUrl: string,
+    stopEnabled: boolean
+  ) => {
+    try {
+      updateService(serviceId, {
+        start_webhook_url: startUrl,
+        start_webhook_enabled: startEnabled,
+        stop_webhook_url: stopUrl,
+        stop_webhook_enabled: stopEnabled,
+      });
+
+      addAlert({
+        type: 'success',
+        title: 'Webhook Konfiguration',
+        message: 'Webhook-Einstellungen wurden gespeichert',
+      });
+    } catch (error) {
+      addAlert({
+        type: 'error',
+        title: 'Speichern Fehlgeschlagen',
+        message: 'Webhook-Einstellungen konnten nicht gespeichert werden',
+      });
+    }
+  };
+
+  const runningServices = services.filter((s) => s.status === 'Running').length;
+  const criticalServices = services.filter((s) => s.error_count > 5 || s.cpu_usage > 80).length;
+  const avgCpu = services.length > 0
+    ? services.reduce((sum, s) => sum + s.cpu_usage, 0) / services.length
+    : 0;
 
   return (
-    <div className={`min-h-screen ${bgClass}`}>
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
       <Header
         theme={theme}
         onToggleTheme={toggleTheme}
-        servicesRunning={0}
-        totalServices={clients.length}
+        servicesRunning={runningServices}
+        totalServices={services.length}
       />
 
       <Toast />
 
-      <main className="container mx-auto px-6 py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className={`text-3xl font-bold ${textClass}`}>Client Übersicht</h1>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-              Verwalten Sie Ihre Monitoring-Clients
-            </p>
+      {criticalServices > 0 && (
+        <div className="container mx-auto px-6 mt-4">
+          <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white p-4 rounded-xl shadow-lg flex items-center justify-between animate-pulse">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-6 h-6" />
+              <div>
+                <h3 className="font-bold">Critical Alert</h3>
+                <p className="text-sm">
+                  {criticalServices} service{criticalServices !== 1 ? 's' : ''} require immediate attention
+                </p>
+              </div>
+            </div>
+            <SelfHealButton services={services} onTrigger={triggerSelfHeal} theme={theme} />
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl"
-          >
-            <Plus className="w-5 h-5" />
-            Client hinzufügen
-          </button>
+        </div>
+      )}
+
+      <main className="container mx-auto px-6 py-6 space-y-6">
+        {services.find((s) => s.name === 'spooler') && (
+          <PrintSpoolerControl
+            service={services.find((s) => s.name === 'spooler')!}
+            onStartWebhook={handleStartWebhook}
+            onStopWebhook={handleStopWebhook}
+            onWebhookUpdate={handleWebhookUpdate}
+            theme={theme}
+          />
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCard
+            title="Total Services"
+            value={services.length}
+            icon={Server}
+            color="blue"
+            theme={theme}
+          />
+          <StatsCard
+            title="Running Services"
+            value={runningServices}
+            icon={Activity}
+            color="green"
+            theme={theme}
+          />
+          <StatsCard
+            title="Critical Issues"
+            value={criticalServices}
+            icon={AlertTriangle}
+            color="red"
+            theme={theme}
+          />
+          <StatsCard
+            title="Avg CPU Usage"
+            value={`${avgCpu.toFixed(1)}%`}
+            icon={TrendingUp}
+            color="yellow"
+            theme={theme}
+          />
         </div>
 
-        {clients.length === 0 ? (
-          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-lg p-12 text-center`}>
-            <div className="max-w-md mx-auto">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                <Plus className="w-10 h-10 text-white" />
-              </div>
-              <h2 className={`text-2xl font-bold ${textClass} mb-2`}>
-                Keine Clients vorhanden
-              </h2>
-              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
-                Fügen Sie Ihren ersten Client hinzu, um mit dem Monitoring zu beginnen
-              </p>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all inline-flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                Ersten Client hinzufügen
-              </button>
-            </div>
+        <div className="flex items-center justify-between">
+          <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Service Monitor
+          </h2>
+          <div className="flex items-center gap-3">
+            <ConfigPanel config={config} onSave={handleConfigSave} theme={theme} />
+            {criticalServices === 0 && (
+              <SelfHealButton services={services} onTrigger={triggerSelfHeal} theme={theme} />
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {clients.map((client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                onClick={handleClientClick}
-                theme={theme}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+        </div>
 
-      <AddClientModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onAdd={handleAddClient}
-        theme={theme}
-      />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {services.map((service) => (
+            <ServiceCard
+              key={service.id}
+              service={service}
+              onAction={handleServiceAction}
+              theme={theme}
+            />
+          ))}
+        </div>
+
+        <MetricsChart services={services} theme={theme} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LogViewer logs={logs} theme={theme} />
+          <WorkflowHistoryPanel history={workflowHistory} services={services} theme={theme} />
+        </div>
+      </main>
     </div>
   );
 }
