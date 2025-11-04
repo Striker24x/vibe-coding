@@ -12,10 +12,6 @@ export interface Service {
   error_count: number;
   webhook_url?: string;
   webhook_enabled?: boolean;
-  start_webhook_url?: string;
-  start_webhook_enabled?: boolean;
-  stop_webhook_url?: string;
-  stop_webhook_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }
