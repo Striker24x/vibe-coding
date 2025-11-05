@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useStore } from './store/useStore';
+import { useClients } from './hooks/useClients';
 import { useDataSync } from './hooks/useDataSync';
 import { Header } from './components/Header';
 import { Toast } from './components/Toast';
@@ -12,7 +13,8 @@ import { Client } from './types';
 import { generateMockServices, generateMockLog } from './utils/mockData';
 
 function App() {
-  const { clients, selectedClientId, theme, toggleTheme, addClient, updateClient, selectClient, addAlert, setClients } = useStore();
+  const { selectedClientId, theme, toggleTheme, selectClient, addAlert } = useStore();
+  const { clients, createClient, updateClient: updateClientData, deleteClient } = useClients();
   const { fetchData } = useDataSync();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -22,25 +24,29 @@ function App() {
     document.body.className = theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50';
   }, [theme]);
 
-  const handleAddClient = (clientData: Omit<Client, 'id' | 'status' | 'last_seen' | 'created_at' | 'updated_at'>) => {
-    const newClientId = Math.random().toString(36).substr(2, 9);
+  const handleAddClient = async (clientData: Omit<Client, 'id' | 'status' | 'last_seen' | 'created_at' | 'updated_at'>) => {
     const isDemo = clientData.name === 'Demo-Server';
 
-    const newClient: Client = {
+    const newClientData = {
       ...clientData,
-      id: newClientId,
       status: isDemo ? 'online' : 'offline',
       last_seen: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
-    addClient(newClient);
+    const newClient = await createClient(newClientData as any);
+    if (!newClient) {
+      addAlert({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Client konnte nicht hinzugefügt werden',
+      });
+      return;
+    }
 
     if (isDemo) {
-      const demoServices = generateMockServices(12, newClientId).map(service => ({
+      const demoServices = generateMockServices(12, newClient.id).map(service => ({
         ...service,
-        id: `${newClientId}-${service.id}`,
+        id: `${newClient.id}-${service.id}`,
       }));
 
       useStore.getState().setServices([
@@ -55,7 +61,7 @@ function App() {
 
       const updateDemoData = () => {
         const currentServices = useStore.getState().services;
-        const demoServices = currentServices.filter(s => s.client_id === newClientId);
+        const demoServices = currentServices.filter(s => s.client_id === newClient.id);
 
         if (demoServices.length === 0) return;
 
@@ -106,16 +112,24 @@ function App() {
     }
   };
 
-  const handleUpdateClient = (updatedClient: Client) => {
-    updateClient(updatedClient.id, updatedClient);
-    addAlert({
-      type: 'success',
-      title: 'Client aktualisiert',
-      message: `${updatedClient.name} wurde erfolgreich aktualisiert`,
-    });
+  const handleUpdateClient = async (updatedClient: Client) => {
+    const success = await updateClientData(updatedClient.id, updatedClient);
+    if (success) {
+      addAlert({
+        type: 'success',
+        title: 'Client aktualisiert',
+        message: `${updatedClient.name} wurde erfolgreich aktualisiert`,
+      });
+    } else {
+      addAlert({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Client konnte nicht aktualisiert werden',
+      });
+    }
   };
 
-  const handleDeleteClient = (clientId: string) => {
+  const handleDeleteClient = async (clientId: string) => {
     const client = clients.find((c) => c.id === clientId);
 
     if ((window as any).__demoIntervals) {
@@ -126,12 +140,20 @@ function App() {
     const updatedServices = useStore.getState().services.filter(s => s.client_id !== clientId);
     useStore.getState().setServices(updatedServices);
 
-    setClients(clients.filter((c) => c.id !== clientId));
-    addAlert({
-      type: 'success',
-      title: 'Client gelöscht',
-      message: `${client?.name || 'Client'} wurde erfolgreich gelöscht`,
-    });
+    const success = await deleteClient(clientId);
+    if (success) {
+      addAlert({
+        type: 'success',
+        title: 'Client gelöscht',
+        message: `${client?.name || 'Client'} wurde erfolgreich gelöscht`,
+      });
+    } else {
+      addAlert({
+        type: 'error',
+        title: 'Fehler',
+        message: 'Client konnte nicht gelöscht werden',
+      });
+    }
   };
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
