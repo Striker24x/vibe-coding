@@ -1,179 +1,100 @@
-import { supabase } from './supabase';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 interface ApiResponse<T> {
   data?: T;
   error?: string;
 }
 
+async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('API request failed:', error);
+    return { error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 export const api = {
   clients: {
-    getAll: async (): Promise<ApiResponse<any[]>> => {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        return { data: data || [] };
-      } catch (error) {
-        console.error('Error fetching clients:', error);
-        return { error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    },
-    getById: async (id: string): Promise<ApiResponse<any>> => {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-
-        if (error) throw error;
-        return { data: data || undefined };
-      } catch (error) {
-        console.error('Error fetching client:', error);
-        return { error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    },
-    create: async (clientData: any): Promise<ApiResponse<any>> => {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .insert([{
-            ...clientData,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }])
-          .select()
-          .single();
-
-        if (error) throw error;
-        return { data };
-      } catch (error) {
-        console.error('Error creating client:', error);
-        return { error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    },
-    update: async (id: string, updates: any): Promise<ApiResponse<any>> => {
-      try {
-        const { data, error } = await supabase
-          .from('clients')
-          .update({
-            ...updates,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return { data };
-      } catch (error) {
-        console.error('Error updating client:', error);
-        return { error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    },
-    delete: async (id: string): Promise<ApiResponse<any>> => {
-      try {
-        const { error } = await supabase
-          .from('clients')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-        return { data: { message: 'Client deleted successfully' } };
-      } catch (error) {
-        console.error('Error deleting client:', error);
-        return { error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    },
-    getServices: async (id: string): Promise<ApiResponse<any[]>> => {
-      try {
-        const { data, error } = await supabase
-          .from('services')
-          .select('*')
-          .eq('client_id', id);
-
-        if (error) throw error;
-        return { data: data || [] };
-      } catch (error) {
-        console.error('Error fetching services:', error);
-        return { error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    },
-    getMetrics: async (id: string): Promise<ApiResponse<any[]>> => {
-      try {
-        const { data, error } = await supabase
-          .from('system_metrics')
-          .select('*')
-          .eq('client_id', id)
-          .order('timestamp', { ascending: false })
-          .limit(100);
-
-        if (error) throw error;
-        return { data: data || [] };
-      } catch (error) {
-        console.error('Error fetching metrics:', error);
-        return { error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    },
+    getAll: () => request('/clients'),
+    getById: (id: string) => request(`/clients/${id}`),
+    create: (data: any) => request('/clients', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => request(`/clients/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) => request(`/clients/${id}`, {
+      method: 'DELETE',
+    }),
+    getServices: (id: string) => request(`/clients/${id}/services`),
+    getMetrics: (id: string) => request(`/clients/${id}/metrics`),
   },
 
   services: {
-    getAll: async (): Promise<ApiResponse<any[]>> => {
-      return { data: [] };
-    },
-    create: async (data: any): Promise<ApiResponse<any>> => {
-      return { data };
-    },
-    update: async (id: string, data: any): Promise<ApiResponse<any>> => {
-      return { data };
-    },
+    getAll: () => request('/monitoring/services'),
+    create: (data: any) => request('/monitoring/services', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => request(`/monitoring/services/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
   },
 
   logs: {
-    getAll: async (): Promise<ApiResponse<any[]>> => {
-      return { data: [] };
-    },
-    create: async (data: any): Promise<ApiResponse<any>> => {
-      return { data };
-    },
+    getAll: () => request('/monitoring/logs'),
+    create: (data: any) => request('/monitoring/logs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   },
 
   workflows: {
-    getAll: async (): Promise<ApiResponse<any[]>> => {
-      return { data: [] };
-    },
-    create: async (data: any): Promise<ApiResponse<any>> => {
-      return { data };
-    },
+    getAll: () => request('/monitoring/workflows'),
+    create: (data: any) => request('/monitoring/workflows', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   },
 
   config: {
-    get: async (): Promise<ApiResponse<any>> => {
-      return { data: {} };
-    },
-    update: async (data: any): Promise<ApiResponse<any>> => {
-      return { data };
-    },
+    get: () => request('/monitoring/config'),
+    update: (data: any) => request('/monitoring/config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   },
 
   monitoring: {
-    submit: async (data: any): Promise<ApiResponse<any>> => {
-      return { data };
-    },
-    getLatest: async (): Promise<ApiResponse<any>> => {
-      return { data: {} };
-    },
+    submit: (data: any) => request('/monitoring/data', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    getLatest: () => request('/monitoring/data/latest'),
   },
 
   webhooks: {
-    getConfig: async (serviceId: string): Promise<ApiResponse<any>> => {
-      return { data: {} };
-    },
-    saveConfig: async (serviceId: string, config: any): Promise<ApiResponse<any>> => {
-      return { data: config };
-    },
+    getConfig: (serviceId: string) => request(`/monitoring/webhooks/config/${serviceId}`),
+    saveConfig: (serviceId: string, config: any) => request(`/monitoring/webhooks/config/${serviceId}`, {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
   },
 };
