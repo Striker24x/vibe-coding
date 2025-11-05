@@ -1,28 +1,30 @@
-import { MongoClient } from 'mongodb';
+import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const client = new MongoClient(process.env.MONGODB_URI);
-let db;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function connectDB() {
   try {
-    await client.connect();
-    db = client.db('monitoring');
-    console.log('✅ Connected to MongoDB');
-    return db;
+    const { error } = await supabase.from('clients').select('count', { count: 'exact', head: true });
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    console.log('✅ Connected to Supabase');
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
+    console.error('❌ Supabase connection error:', error);
     throw error;
   }
 }
 
 export function getDB() {
-  if (!db) {
-    throw new Error('Database not initialized. Call connectDB first.');
-  }
-  return db;
+  return supabase;
 }
-
-export { client };

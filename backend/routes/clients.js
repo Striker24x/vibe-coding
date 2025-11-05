@@ -1,14 +1,18 @@
 import express from 'express';
 import { getDB } from '../db.js';
-import { ObjectId } from 'mongodb';
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const db = getDB();
-    const clients = await db.collection('clients').find().toArray();
-    res.json(clients);
+    const supabase = getDB();
+    const { data: clients, error } = await supabase
+      .from('clients')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(clients || []);
   } catch (error) {
     console.error('Error fetching clients:', error);
     res.status(500).json({ error: 'Failed to fetch clients' });
@@ -17,15 +21,21 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const client = {
       ...req.body,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const result = await db.collection('clients').insertOne(client);
-    res.status(201).json({ ...client, _id: result.insertedId });
+    const { data, error } = await supabase
+      .from('clients')
+      .insert([client])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
   } catch (error) {
     console.error('Error creating client:', error);
     res.status(500).json({ error: 'Failed to create client' });
@@ -34,23 +44,26 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const { id } = req.params;
     const updates = {
       ...req.body,
       updated_at: new Date().toISOString(),
     };
 
-    const result = await db.collection('clients').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updates }
-    );
+    const { data, error } = await supabase
+      .from('clients')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
 
-    if (result.matchedCount === 0) {
+    if (error) throw error;
+    if (!data) {
       return res.status(404).json({ error: 'Client not found' });
     }
 
-    res.json({ message: 'Client updated successfully' });
+    res.json(data);
   } catch (error) {
     console.error('Error updating client:', error);
     res.status(500).json({ error: 'Failed to update client' });
@@ -59,15 +72,15 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const { id } = req.params;
 
-    const result = await db.collection('clients').deleteOne({ _id: new ObjectId(id) });
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', id);
 
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Client not found' });
-    }
-
+    if (error) throw error;
     res.json({ message: 'Client deleted successfully' });
   } catch (error) {
     console.error('Error deleting client:', error);
@@ -77,10 +90,15 @@ router.delete('/:id', async (req, res) => {
 
 router.get('/:id/services', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const { id } = req.params;
-    const services = await db.collection('services').find({ client_id: id }).toArray();
-    res.json(services);
+    const { data: services, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('client_id', id);
+
+    if (error) throw error;
+    res.json(services || []);
   } catch (error) {
     console.error('Error fetching services:', error);
     res.status(500).json({ error: 'Failed to fetch services' });
@@ -89,14 +107,17 @@ router.get('/:id/services', async (req, res) => {
 
 router.get('/:id/metrics', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const { id } = req.params;
-    const metrics = await db.collection('system_metrics')
-      .find({ client_id: id })
-      .sort({ timestamp: -1 })
-      .limit(100)
-      .toArray();
-    res.json(metrics);
+    const { data: metrics, error } = await supabase
+      .from('system_metrics')
+      .select('*')
+      .eq('client_id', id)
+      .order('timestamp', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    res.json(metrics || []);
   } catch (error) {
     console.error('Error fetching metrics:', error);
     res.status(500).json({ error: 'Failed to fetch metrics' });
