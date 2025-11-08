@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/monitoring';
 
 interface ApiResponse<T> {
   data?: T;
@@ -28,71 +28,53 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiR
 }
 
 export const api = {
-  clients: {
-    getAll: () => request('/clients'),
-    getById: (id: string) => request(`/clients/${id}`),
-    create: (data: any) => request('/clients', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-    update: (id: string, data: any) => request(`/clients/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
-    delete: (id: string) => request(`/clients/${id}`, {
-      method: 'DELETE',
-    }),
-    getServices: (id: string) => request(`/clients/${id}/services`),
-    getMetrics: (id: string) => request(`/clients/${id}/metrics`),
-  },
-
   services: {
-    getAll: () => request('/monitoring/services'),
-    create: (data: any) => request('/monitoring/services', {
+    getAll: () => request('/services'),
+    create: (data: any) => request('/services', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    update: (id: string, data: any) => request(`/monitoring/services/${id}`, {
+    update: (id: string, data: any) => request(`/services/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   },
 
   logs: {
-    getAll: () => request('/monitoring/logs'),
-    create: (data: any) => request('/monitoring/logs', {
+    getAll: () => request('/logs'),
+    create: (data: any) => request('/logs', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   },
 
   workflows: {
-    getAll: () => request('/monitoring/workflows'),
-    create: (data: any) => request('/monitoring/workflows', {
+    getAll: () => request('/workflows'),
+    create: (data: any) => request('/workflows', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   },
 
   config: {
-    get: () => request('/monitoring/config'),
-    update: (data: any) => request('/monitoring/config', {
+    get: () => request('/config'),
+    update: (data: any) => request('/config', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   },
 
   monitoring: {
-    submit: (data: any) => request('/monitoring/data', {
+    submit: (data: any) => request('/data', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    getLatest: () => request('/monitoring/data/latest'),
+    getLatest: () => request('/data/latest'),
   },
 
   webhooks: {
-    getConfig: (serviceId: string) => request(`/monitoring/webhooks/config/${serviceId}`),
-    saveConfig: (serviceId: string, config: any) => request(`/monitoring/webhooks/config/${serviceId}`, {
+    getConfig: (serviceId: string) => request(`/webhooks/config/${serviceId}`),
+    saveConfig: (serviceId: string, config: any) => request(`/webhooks/config/${serviceId}`, {
       method: 'POST',
       body: JSON.stringify(config),
     }),
